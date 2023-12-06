@@ -1,0 +1,19 @@
+.plyr--full-ui.plyr--video .plyr__control--overlaid {
+    display: none;
+}
+.plyr audio, .plyr iframe, .plyr video {
+    display: block;
+    width: 50%;
+}
+.plyr__video-wrapper {
+    background: #ffffff;
+    position: relative;
+    width: 100%;
+}
+.plyr--video .plyr__controls {
+    padding: 10px;
+    padding: var(--plyr-control-spacing,10px);
+    padding-top: calc(10px * 3.5);
+    padding-top: calc(var(--plyr-control-spacing,10px) * 3.5);
+    width: 50%
+}

@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.6.3/plyr.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>Google Storage</title>
+  </head>
+  <style>
+    .container {
+      margin: 100px auto;
+      width: 70%;
+    }
+
+    video {
+      width: 100%;
+    }
+  </style>
+  <body onload="loadPosts()">
+    <h2>Video Streaming using Google Storage</h2>
+    <input type="file" name="video" accept="video/mp4" id="videofile" />
+    <button id="submitBtn">Submit</button>
+    <div class="" id="videos"></div>
+    <script src="https://cdn.plyr.io/3.6.3/plyr.js"></script>
+    <script src="https://cdn.rawgit.com/video-dev/hls.js/18bb552/dist/hls.min.js"></script>
+    <script src="/submit.js"></script>
+  </body>
+</html>
