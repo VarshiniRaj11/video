@@ -4,8 +4,6 @@ import { Storage } from "@google-cloud/storage";
 import multer from "multer";
 const { spawn } = require("child_process");
 
-//ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe");
-
 const app = express();
 const port = 4000;
 const src = path.join(__dirname, "views");
@@ -41,15 +39,12 @@ app.get("/stream/:videoFileName", async (req, res) => {
     const videoFileName = req.params.videoFileName;
     const file = bucket.file(videoFileName);
 
-    // Get the file size
     const [metadata] = await file.getMetadata();
     const fileSize = (metadata?.size as number) || undefined;
 
     if (fileSize !== undefined) {
-      // Set the content type
       res.setHeader("Content-Type", "video/mp4");
 
-      // Parse Range header to get the start and end bytes
       const range = req.headers.range;
 
       if (range) {
@@ -57,34 +52,27 @@ app.get("/stream/:videoFileName", async (req, res) => {
         const start = parseInt(parts[0], 10);
         const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
 
-        // Calculate chunk size (you can adjust this value)
         const chunkSize = 10 ** 6; // 1 MB
 
-        // Set the response headers for partial content
         res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
         res.setHeader("Accept-Ranges", "bytes");
         res.setHeader("Content-Length", chunkSize);
         res.status(206);
 
-        // Stream the file in chunks
         const readStream = file.createReadStream({ start, end });
 
         readStream.on("error", (err) => {
-          // console.error("Error reading stream:", err);
           res.status(500).send("Internal Server Error");
         });
 
         readStream.pipe(res);
       } else {
-        // Handle the case when 'range' is undefined
         res.status(400).send("Bad Request: Range header is missing");
       }
     } else {
-      // Handle the case when 'fileSize' is undefined
       res.status(500).send("Internal Server Error: File size is undefined");
     }
   } catch (error) {
-    // console.error("Error:", error);
     res.status(500).send("Internal Server Error");
   }
 });
@@ -99,56 +87,53 @@ app.post("/upload", upload.single("video"), async (req, res) => {
     console.log("File found, trying to upload and compress");
 
     var resolutions = [
-      { a: 40, b: "20k", c: "Low" },
-      { a: 35, b: "40k", c: "Medium" },
-      { a: 30, b: "60k", c: "High" },
+      { CRF: 40, audio: "20k", quality: "Low" },
+      { CRF: 35, audio: "40k", quality: "Medium" },
+      { CRF: 30, audio: "60k", quality: "High" },
     ];
 
     for (var i = 0; i < resolutions.length; i++) {
       const compressedFileName =
-        resolutions[i].c + "/" + `compressed_${req.file.originalname}`;
+        resolutions[i].quality + "/" + `compressed_${req.file.originalname}`;
 
-      // Compress the video using ffmpeg
       const ffmpegProcess = spawn("C:/ffmpeg/bin/ffmpeg.exe", [
         "-i",
-        "-",
+        "-", // stdin
         "-c:v",
-        "libx264",
+        "libx264", // video codec
         "-crf",
-        resolutions[i].a,
+        resolutions[i].CRF, // constant rate factor
         "-c:a",
         "aac",
         "-b:a",
-        resolutions[i].b,
+        resolutions[i].audio, // audio codec
         "-f",
-        "mp4",
+        "mp4", // mp4 format
         "-preset",
-        "fast", // Adjust compression speed (optional)
+        "fast", // compression speed
         "-movflags",
-        "frag_keyframe+empty_moov", // For better streaming support (optional)
-        "pipe:1", // Output to stdout
+        "frag_keyframe+empty_moov", // MOV flags for better streaming
+        "pipe:1", // stdout
       ]);
 
       // Stream the input video buffer to the FFmpeg process
       ffmpegProcess.stdin.write(req.file.buffer);
       ffmpegProcess.stdin.end();
 
-      // Create a writable stream for the compressed video in Google Cloud Storage
+      // Creates a writable stream for the compressed video in GCS
       const compressedBlob = bucket.file(compressedFileName);
       const compressedBlobStream = compressedBlob.createWriteStream();
 
-      // Pipe the output of ffmpeg to the Google Cloud Storage stream
+      // Pipe the output of ffmpeg to the GCS stream
       ffmpegProcess.stdout.pipe(compressedBlobStream);
 
       compressedBlobStream.on("error", (error) => {
         console.error("Error writing to Google Cloud Storage:", error);
         res.status(500).send("Internal Server Error");
-        // Close the FFmpeg process if there's an error with the storage stream
         ffmpegProcess.kill();
       });
 
       compressedBlobStream.on("finish", () => {
-        // res.status(200).send("Success");
         console.log("Success");
       });
     }
